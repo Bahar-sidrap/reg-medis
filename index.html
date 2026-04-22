@@ -1,16 +1,17 @@
-<!-- Firebase (Ubah versi jika perlu) -->
+<!-- Firebase SDK (Compatibility Mode) -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
     @media print { 
         .no-print { display: none !important; }
         #print-area { display: block !important; }
     }
     #print-area { display: none; }
+    input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 </style>
 
 
@@ -18,7 +19,7 @@
     const { useState, useEffect, useMemo } = React;
     
     // --- KONFIGURASI FIREBASE ---
-    // Ganti dengan config milik Anda dari Firebase Console
+    // Ganti bagian ini dengan config dari Firebase Console Anda
     const firebaseConfig = {
         apiKey: "AIzaSy...", 
         authDomain: "project-id.firebaseapp.com",
@@ -34,12 +35,11 @@
     }
     const db = firebase.firestore();
     const auth = firebase.auth();
-    const appId = 'patient-reg-001';
 
     const ACCESS_KEY = "1234";
     const PEKERJAAN_OPTIONS = ['IRT', 'Petani', 'Wiraswasta', 'ASN', 'Supir', 'Mahasiswa/Pelajar', 'Buruh', 'Nelayan', 'Pensiunan', 'Lainnya'];
 
-    // --- KOMPONEN ICON (LUCIDE) ---
+    // Komponen Icon Lucide
     const Icon = ({ name, className }) => {
         const [iconHtml, setIconHtml] = useState('');
         useEffect(() => {
@@ -72,6 +72,7 @@
         };
         const [formData, setFormData] = useState(initialFormState);
 
+        // Auth & Real-time Listeners
         useEffect(() => {
             auth.signInAnonymously().catch(e => console.error(e));
             const unsubscribe = db.collection('patients')
@@ -105,6 +106,7 @@
 
         const handleSave = async (e) => {
             e.preventDefault();
+            if (formData.nik && formData.nik.length !== 16) return alert("NIK harus 16 digit!");
             setLoading(true);
             try {
                 if (selectedPatient && activeTab === 'register') {
@@ -114,8 +116,8 @@
                 }
                 setMessage({ type: 'success', text: 'Berhasil disimpan!' });
                 setFormData(initialFormState);
-                setTimeout(() => { setActiveTab('history'); setMessage(null); }, 1000);
-            } catch (err) { alert("Gagal!"); }
+                setTimeout(() => { setActiveTab('history'); setMessage(null); setSelectedPatient(null); }, 1500);
+            } catch (err) { alert("Gagal Simpan!"); }
             setLoading(false);
         };
 
@@ -133,7 +135,7 @@
             const current = patients.filter(p => (p.tanggal || "").startsWith(filterMonth));
             const statusCounts = current.reduce((acc, p) => { acc[p.status] = (acc[p.status] || 0) + 1; return acc; }, {});
             const icdCounts = current.reduce((acc, p) => { const code = p.icd10 || "LAIN"; acc[code] = (acc[code] || 0) + 1; return acc; }, {});
-            const topIcd = Object.entries(icdCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+            const topIcd = Object.entries(icdCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
             return { total: current.length, statusCounts, topIcd };
         }, [patients, filterMonth]);
 
@@ -153,7 +155,8 @@
             return (
                 <div className="min-h-screen bg-blue-700 flex items-center justify-center p-6">
                     <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl text-center">
-                        <h1 className="text-2xl font-bold mb-8 text-blue-700">REG-MEDIS LOGIN</h1>
+                        <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6"><Icon name="Lock" className="w-10 h-10" /></div>
+                        <h1 className="text-2xl font-bold mb-8">REG-MEDIS LOGIN</h1>
                         <form onSubmit={handleLogin} className="space-y-4">
                             <input type="password" required className="w-full p-4 bg-slate-50 border-2 rounded-3xl text-center text-xl font-bold outline-none" placeholder="KUNCI" value={loginPass} onChange={(e) => setLoginPass(e.target.value)} />
                             <button type="submit" className="w-full py-4 bg-blue-600 text-white font-bold rounded-3xl">MASUK</button>
@@ -164,43 +167,56 @@
         }
 
         return (
-            <div className="min-h-screen pb-24">
-                <header className="bg-blue-700 text-white p-6 sticky top-0 z-30 shadow-lg rounded-b-[2.5rem] no-print flex justify-between items-center">
+            <div className="min-h-screen pb-28">
+                <header className="bg-blue-700 text-white p-5 sticky top-0 z-30 shadow-lg flex justify-between items-center rounded-b-[2.5rem] no-print">
                     <div>
-                        <h1 className="text-xl font-black italic">REG-MEDIS PRO</h1>
-                        <p className="text-[9px] opacity-70 font-bold uppercase">{activeTab}</p>
+                        <h1 className="text-xl font-black italic tracking-tighter">REG-MEDIS PRO</h1>
+                        <p className="text-[9px] opacity-70 font-bold uppercase tracking-widest">{activeTab}</p>
                     </div>
-                    <button onClick={() => { localStorage.removeItem('app_unlocked'); window.location.reload(); }} className="bg-white/10 p-2 rounded-xl">
-                        <Icon name="Lock" className="w-4 h-4" />
+                    <button onClick={() => { localStorage.removeItem('app_unlocked'); window.location.reload(); }} className="bg-white/10 p-2 rounded-xl active:scale-95 transition-transform">
+                        <Icon name="Power" className="w-4 h-4" />
                     </button>
                 </header>
 
                 <main className="max-w-xl mx-auto p-4 no-print">
+                    {message && (
+                        <div className="mb-4 p-4 bg-green-500 text-white rounded-2xl text-xs font-bold animate-bounce flex items-center gap-2">
+                            <Icon name="CheckCircle" className="w-4 h-4" /> {message.text}
+                        </div>
+                    )}
+
                     {activeTab === 'dashboard' && (
-                        <div className="space-y-4">
-                            <div className="bg-white p-5 rounded-[2rem] border shadow-sm flex items-center justify-between">
-                                <input type="month" className="text-sm font-bold outline-none" value={filterMonth} onChange={e => setFilterMonth(e.target.value)} />
+                        <div className="space-y-4 animate-in fade-in">
+                            <div className="bg-white p-5 rounded-[2.5rem] border shadow-sm flex items-center justify-between">
+                                <input type="month" className="text-sm font-bold outline-none bg-slate-50 px-4 py-2 rounded-xl" value={filterMonth} onChange={e => setFilterMonth(e.target.value)} />
                                 <div className="flex gap-2">
-                                    <button onClick={() => window.print()} className="p-3 bg-slate-800 text-white rounded-xl"><Icon name="Printer" className="w-4 h-4" /></button>
-                                    <button onClick={downloadCSV} className="p-3 bg-blue-600 text-white rounded-xl"><Icon name="Download" className="w-4 h-4" /></button>
+                                    <button onClick={() => window.print()} className="p-3 bg-slate-800 text-white rounded-2xl active:scale-90"><Icon name="Printer" className="w-5 h-5" /></button>
+                                    <button onClick={downloadCSV} className="p-3 bg-blue-600 text-white rounded-2xl active:scale-90"><Icon name="Download" className="w-5 h-5" /></button>
                                 </div>
                             </div>
-                            <div className="bg-blue-600 p-8 rounded-[2.5rem] text-white shadow-xl">
-                                <p className="text-xs font-bold opacity-70 mb-1 uppercase tracking-widest">Total Pasien Bulan Ini</p>
+                            
+                            <div className="bg-blue-600 p-8 rounded-[3rem] text-white shadow-xl shadow-blue-100 relative overflow-hidden">
+                                <Icon name="Users" className="w-24 h-24 absolute -right-4 -bottom-4 opacity-10" />
+                                <p className="text-xs font-bold opacity-70 uppercase tracking-widest mb-1">Pasien Terdaftar</p>
                                 <p className="text-6xl font-black">{dashboardData.total}</p>
-                                <div className="mt-4 flex gap-2 text-[9px] font-bold">
-                                    <span className="bg-white/20 px-3 py-1 rounded-full">UMUM: {dashboardData.statusCounts['Umum'] || 0}</span>
-                                    <span className="bg-white/20 px-3 py-1 rounded-full">BPJS: {dashboardData.statusCounts['BPJS'] || 0}</span>
+                                <div className="mt-6 flex gap-3 text-[10px] font-bold">
+                                    <span className="bg-white/20 px-3 py-1.5 rounded-xl uppercase">UMUM: {dashboardData.statusCounts['Umum'] || 0}</span>
+                                    <span className="bg-white/20 px-3 py-1.5 rounded-xl uppercase">BPJS: {dashboardData.statusCounts['BPJS'] || 0}</span>
                                 </div>
                             </div>
-                            <div className="bg-white p-6 rounded-[2.5rem] border shadow-sm">
-                                <h3 className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">Top Diagnosa ICD-10</h3>
+
+                            <div className="bg-white p-6 rounded-[3rem] border shadow-sm">
+                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                    <Icon name="BarChart" className="w-4 h-4" /> Top Diagnosa ICD-10
+                                </h3>
                                 <div className="space-y-2">
                                     {dashboardData.topIcd.map(([code, count]) => (
                                         <div key={code} className="flex items-center gap-3">
-                                            <span className="text-[10px] font-black text-blue-600 w-10">{code}</span>
-                                            <div className="flex-1 bg-slate-50 h-1.5 rounded-full"><div className="bg-blue-500 h-full rounded-full" style={{width: `${(count/dashboardData.total)*100}%`}}></div></div>
-                                            <span className="text-[10px] font-bold text-slate-400">{count}</span>
+                                            <span className="text-[11px] font-mono font-bold text-blue-600 w-12">{code}</span>
+                                            <div className="flex-1 bg-slate-50 h-2 rounded-full overflow-hidden">
+                                                <div className="bg-blue-500 h-full rounded-full" style={{width: `${(count/dashboardData.total)*100}%`}}></div>
+                                            </div>
+                                            <span className="text-[11px] font-bold text-slate-400">{count}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -209,14 +225,16 @@
                     )}
 
                     {activeTab === 'register' && (
-                        <div className="bg-white rounded-[2.5rem] shadow-sm border p-6">
-                            <h2 className="text-lg font-black mb-6 border-b pb-4 uppercase">{selectedPatient ? 'Edit Data' : 'Daftar Baru'}</h2>
+                        <div className="bg-white rounded-[2.5rem] shadow-sm border p-6 animate-in slide-in-from-right">
+                            <h2 className="text-lg font-black mb-6 border-b pb-4 flex items-center gap-2 uppercase">
+                                <Icon name="UserPlus" className="text-blue-600 w-5 h-5" /> {selectedPatient ? 'Edit Data' : 'Daftar Baru'}
+                            </h2>
                             <form onSubmit={handleSave} className="space-y-4">
                                 <div className="grid grid-cols-2 gap-3">
                                     <input type="date" required className="p-4 bg-slate-50 border-0 rounded-2xl text-sm font-bold" value={formData.tanggal} onChange={e => setFormData({...formData, tanggal: e.target.value})} />
                                     <input type="time" required className="p-4 bg-slate-50 border-0 rounded-2xl text-sm font-bold" value={formData.jam} onChange={e => setFormData({...formData, jam: e.target.value})} />
                                 </div>
-                                <input type="text" required placeholder="NAMA PASIEN" className="w-full p-4 bg-slate-50 border-0 rounded-2xl font-bold uppercase text-sm" value={formData.namaPasien} onChange={e => setFormData({...formData, namaPasien: e.target.value.toUpperCase()})} />
+                                <input type="text" required placeholder="NAMA PASIEN (KAPITAL)" className="w-full p-4 bg-slate-50 border-0 rounded-2xl font-bold uppercase text-sm" value={formData.namaPasien} onChange={e => setFormData({...formData, namaPasien: e.target.value.toUpperCase()})} />
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1">
                                         <label className="text-[9px] font-bold text-slate-400 ml-2 uppercase">Tgl Lahir</label>
@@ -233,37 +251,43 @@
                                         <option value="BPJS">BPJS</option>
                                         <option value="Lainnya">LAINNYA</option>
                                     </select>
-                                    <select className="p-4 bg-slate-50 border-0 rounded-2xl text-sm font-bold" value={formData.jenisKelamin} onChange={e => setFormData({...formData, jenisKelamin: e.target.value})}>
-                                        <option value="L">LAKI-LAKI</option>
-                                        <option value="P">PEREMPUAN</option>
+                                    <select className="p-4 bg-slate-50 border-0 rounded-2xl text-sm font-bold" value={formData.pekerjaan} onChange={e => setFormData({...formData, pekerjaan: e.target.value})}>
+                                        {PEKERJAAN_OPTIONS.map(opt => <option key={opt} value={opt}>{opt.toUpperCase()}</option>)}
                                     </select>
                                 </div>
-                                <input type="number" placeholder="NIK (16 DIGIT)" className="w-full p-4 bg-slate-50 border-0 rounded-2xl text-sm font-bold" value={formData.nik} onChange={e => setFormData({...formData, nik: e.target.value})} />
-                                <textarea placeholder="KELUHAN / ANAMNESA" className="w-full p-4 bg-slate-50 border-0 rounded-2xl text-sm italic" value={formData.anamnesa} onChange={e => setFormData({...formData, anamnesa: e.target.value})} />
-                                <div className="grid grid-cols-2 gap-3">
-                                    <input type="text" placeholder="DIAGNOSA" className="p-4 bg-slate-50 border-0 rounded-2xl text-sm font-bold" value={formData.diagnosis} onChange={e => setFormData({...formData, diagnosis: e.target.value})} />
-                                    <input type="text" placeholder="KODE ICD-10" className="p-4 bg-slate-50 border-0 rounded-2xl text-sm font-black text-blue-600" value={formData.icd10} onChange={e => setFormData({...formData, icd10: e.target.value.toUpperCase()})} />
+                                <input type="number" placeholder="NIK (16 DIGIT)" className={`w-full p-4 border-0 rounded-2xl text-sm ${formData.nik && formData.nik.length !== 16 ? 'bg-red-50 text-red-600' : 'bg-slate-50 font-bold'}`} value={formData.nik} onChange={e => setFormData({...formData, nik: e.target.value})} />
+                                
+                                <div className="bg-slate-50 p-6 rounded-[2.5rem] space-y-4 border-2 border-slate-100">
+                                    <textarea placeholder="KELUHAN / ANAMNESA" className="w-full p-4 bg-white border-0 rounded-2xl text-sm italic min-h-[100px]" value={formData.anamnesa} onChange={e => setFormData({...formData, anamnesa: e.target.value})} />
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <input type="text" placeholder="DIAGNOSA" className="p-4 bg-white border-0 rounded-2xl text-sm font-bold" value={formData.diagnosis} onChange={e => setFormData({...formData, diagnosis: e.target.value})} />
+                                        <input type="text" placeholder="KODE ICD-10" className="p-4 bg-white border-0 rounded-2xl text-sm font-black text-blue-600" value={formData.icd10} onChange={e => setFormData({...formData, icd10: e.target.value.toUpperCase()})} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <input type="text" placeholder="TINDAKAN" className="p-4 bg-white border-0 rounded-2xl text-sm" value={formData.tindakan} onChange={e => setFormData({...formData, tindakan: e.target.value})} />
+                                        <input type="text" placeholder="TERAPI" className="p-4 bg-white border-0 rounded-2xl text-sm" value={formData.terapi} onChange={e => setFormData({...formData, terapi: e.target.value})} />
+                                    </div>
                                 </div>
-                                <button type="submit" disabled={loading} className="w-full py-5 bg-blue-600 text-white font-black rounded-3xl shadow-xl uppercase tracking-widest">
-                                    {loading ? 'MEMPROSES...' : 'SIMPAN DATA'}
+                                <button type="submit" disabled={loading} className="w-full py-5 bg-blue-600 text-white font-black rounded-3xl shadow-xl shadow-blue-200 uppercase tracking-widest">
+                                    {loading ? 'MEMPROSES...' : 'SIMPAN REGISTER'}
                                 </button>
                             </form>
                         </div>
                     )}
 
                     {activeTab === 'history' && (
-                        <div className="space-y-4">
-                            <div className="bg-white p-5 rounded-3xl border shadow-sm flex gap-2">
-                                <input type="month" className="flex-1 p-3 bg-slate-50 rounded-xl text-xs font-bold" value={filterMonth} onChange={e => setFilterMonth(e.target.value)} />
-                                <select className="flex-1 p-3 bg-slate-50 rounded-xl text-xs font-bold" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-                                    <option value="Semua">SEMUA STATUS</option>
+                        <div className="space-y-4 animate-in slide-in-from-left">
+                            <div className="bg-white p-4 rounded-[2rem] border shadow-sm flex gap-2">
+                                <input type="month" className="flex-1 p-3 bg-slate-50 rounded-xl text-xs font-bold outline-none" value={filterMonth} onChange={e => setFilterMonth(e.target.value)} />
+                                <select className="flex-1 p-3 bg-slate-50 rounded-xl text-xs font-bold outline-none" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+                                    <option value="Semua">SEMUA</option>
                                     <option value="Umum">UMUM</option>
                                     <option value="BPJS">BPJS</option>
                                 </select>
                             </div>
-                            <div className="bg-white rounded-[2rem] border overflow-hidden">
+                            <div className="bg-white rounded-[2.5rem] border overflow-hidden shadow-sm">
                                 <table className="w-full text-left">
-                                    <thead className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase">
+                                    <thead className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-widest">
                                         <tr><th className="p-4">TGL</th><th className="p-4">PASIEN</th><th className="p-4">ICD</th></tr>
                                     </thead>
                                     <tbody className="divide-y text-sm">
@@ -272,11 +296,12 @@
                                                 <td className="p-4 text-[9px] font-bold text-slate-400">{p.tanggal?.split('-').reverse().slice(0,2).join('/')}</td>
                                                 <td className="p-4">
                                                     <p className="font-black text-slate-800 text-[11px] uppercase truncate max-w-[120px]">{p.namaPasien}</p>
-                                                    <span className="text-[7px] font-black px-1 rounded bg-blue-100 text-blue-600">{p.status}</span>
+                                                    <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase ${p.status === 'BPJS' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>{p.status}</span>
                                                 </td>
                                                 <td className="p-4 font-mono text-[10px] text-blue-600 font-black">{p.icd10 || '-'}</td>
                                             </tr>
                                         ))}
+                                        {filteredPatients.length === 0 && <tr><td colSpan="3" className="p-10 text-center text-xs text-slate-300 italic">Data Kosong</td></tr>}
                                     </tbody>
                                 </table>
                             </div>
@@ -284,22 +309,32 @@
                     )}
                 </main>
 
+                {/* MODAL DETAIL */}
                 {selectedPatient && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                         <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setSelectedPatient(null)} />
-                        <div className="bg-white w-full max-w-sm rounded-[3rem] shadow-2xl relative overflow-hidden animate-in zoom-in-95">
-                            <div className="p-8 space-y-6">
+                        <div className="bg-white w-full max-w-sm rounded-[3.5rem] shadow-2xl relative overflow-hidden animate-in zoom-in-95">
+                            <div className="p-8 space-y-6 max-h-[80vh] overflow-y-auto">
                                 <div className="flex justify-between items-start">
-                                    <div><p className="font-black text-2xl uppercase">{selectedPatient.namaPasien}</p><p className="text-xs font-bold text-slate-400">{selectedPatient.umur} • {selectedPatient.status}</p></div>
+                                    <div>
+                                        <p className="font-black text-2xl uppercase leading-tight">{selectedPatient.namaPasien}</p>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedPatient.umur} • {selectedPatient.status}</p>
+                                    </div>
                                     <button onClick={() => setSelectedPatient(null)} className="p-2 bg-slate-100 rounded-full"><Icon name="X" className="w-5 h-5" /></button>
                                 </div>
-                                <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100">
+                                <div className="bg-blue-50 p-6 rounded-[2.5rem] border border-blue-100">
                                     <p className="text-[10px] font-black text-blue-600 uppercase mb-1">Diagnosa & ICD</p>
-                                    <p className="font-black text-lg text-blue-900 leading-tight uppercase">{selectedPatient.diagnosis} ({selectedPatient.icd10})</p>
+                                    <p className="font-black text-xl text-blue-900 leading-tight uppercase">{selectedPatient.diagnosis} ({selectedPatient.icd10 || '-'})</p>
                                 </div>
-                                <div className="space-y-1">
-                                    <p className="text-[9px] font-black text-slate-400 uppercase">Keluhan / Anamnesa:</p>
-                                    <p className="text-sm italic text-slate-600 leading-relaxed border-l-4 border-blue-200 pl-3">"{selectedPatient.anamnesa || '-'}"</p>
+                                <div className="space-y-4">
+                                    <div className="bg-orange-50 p-4 rounded-2xl border-l-4 border-orange-400">
+                                        <p className="text-[9px] font-black text-orange-600 uppercase mb-1">Keluhan:</p>
+                                        <p className="text-sm italic text-slate-700">"{selectedPatient.anamnesa || '-'}"</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 text-[10px] font-bold uppercase text-slate-400">
+                                        <div><p className="mb-1 text-slate-300">Tindakan:</p><p className="text-slate-800">{selectedPatient.tindakan || '-'}</p></div>
+                                        <div><p className="mb-1 text-slate-300">Terapi:</p><p className="text-slate-800">{selectedPatient.terapi || '-'}</p></div>
+                                    </div>
                                 </div>
                                 <div className="flex gap-2 pt-4">
                                     <button onClick={() => setShowDeleteConfirm(true)} className="flex-1 py-4 bg-red-50 text-red-600 rounded-2xl font-black text-xs uppercase">Hapus</button>
@@ -310,12 +345,14 @@
                     </div>
                 )}
 
+                {/* MODAL DELETE */}
                 {showDeleteConfirm && (
                     <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-red-900/60 backdrop-blur-md">
-                        <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 text-center shadow-2xl">
+                        <div className="bg-white w-full max-w-xs rounded-[3rem] p-10 text-center shadow-2xl">
+                            <Icon name="AlertTriangle" className="w-16 h-16 text-red-600 mx-auto mb-4" />
                             <h3 className="text-xl font-black mb-2 uppercase">Hapus Data?</h3>
-                            <p className="text-xs text-slate-500 mb-6 font-bold uppercase tracking-widest leading-relaxed">Tindakan ini tidak dapat dibatalkan.</p>
-                            <button onClick={confirmDelete} className="w-full py-4 bg-red-600 text-white font-black rounded-2xl text-xs uppercase mb-2">YA, HAPUS</button>
+                            <p className="text-[10px] text-slate-500 mb-8 font-bold uppercase tracking-widest leading-relaxed">Data ini akan terhapus selamanya dari cloud database.</p>
+                            <button onClick={confirmDelete} className="w-full py-4 bg-red-600 text-white font-black rounded-2xl text-xs uppercase mb-2 shadow-lg">YA, HAPUS</button>
                             <button onClick={() => setShowDeleteConfirm(false)} className="w-full py-2 text-slate-400 font-bold text-xs uppercase">BATAL</button>
                         </div>
                     </div>
@@ -327,14 +364,15 @@
                         { id: 'register', icon: 'UserPlus', label: 'Input' },
                         { id: 'history', icon: 'ClipboardList', label: 'Register' }
                     ].map(t => (
-                        <button key={t.id} onClick={() => setActiveTab(t.id)} className={`flex flex-col items-center gap-1 ${activeTab === t.id ? 'text-blue-600' : 'text-slate-400'}`}>
-                            <div className={`p-3 rounded-2xl ${activeTab === t.id ? 'bg-blue-600 text-white shadow-lg' : ''}`}><Icon name={t.icon} className="w-5 h-5" /></div>
+                        <button key={t.id} onClick={() => { setActiveTab(t.id); setSelectedPatient(null); }} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === t.id ? 'text-blue-600' : 'text-slate-400'}`}>
+                            <div className={`p-3 rounded-2xl transition-all ${activeTab === t.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : ''}`}><Icon name={t.icon} className="w-6 h-6" /></div>
                             <span className="text-[8px] font-black uppercase tracking-widest">{t.label}</span>
                         </button>
                     ))}
                 </nav>
 
-                <div id="print-area" className="p-10 font-serif">
+                {/* PRINT AREA */}
+                <div id="print-area" className="p-10 font-serif text-black">
                     <div className="text-center border-b-4 border-double pb-4 mb-8">
                         <h1 className="text-2xl font-bold uppercase">Laporan Rekapitulasi Pasien</h1>
                         <h2 className="text-lg uppercase">Periode: {filterMonth}</h2>
@@ -347,13 +385,15 @@
                             <p>BPJS: {dashboardData.statusCounts['BPJS'] || 0}</p>
                         </div>
                         <div className="border p-4 rounded-xl">
-                            <h3 className="font-bold border-b mb-2 uppercase">Top 5 Penyakit (ICD-10)</h3>
+                            <h3 className="font-bold border-b mb-2 uppercase">Top 10 Diagnosa (ICD-10)</h3>
                             {dashboardData.topIcd.map(([code, count]) => (
                                 <p key={code}>{code}: {count} Kasus</p>
                             ))}
                         </div>
                     </div>
-                    <div className="mt-20 flex justify-end"><div className="text-center w-64 border-t border-black pt-2 font-bold uppercase">Petugas Pemeriksa</div></div>
+                    <div className="mt-20 flex justify-end">
+                        <div className="text-center w-64 border-t border-black pt-2 font-bold uppercase">Petugas Pemeriksa</div>
+                    </div>
                 </div>
             </div>
         );
