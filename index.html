@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>REG-MEDIS PRO FINAL</title>
     
-    <!-- Library Dependencies -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -13,7 +12,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK (Compatibility Mode) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -46,17 +45,15 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
-        // --- KONFIGURASI FIREBASE ---
-        // PENTING: Ganti dengan Config milik Anda di Firebase Console agar data tersimpan selamanya
-      const firebaseConfig = {
-  apiKey: "AIzaSyAbchKwknPm3jMkDt7aP_mJXM0PV68uLVU",
-  authDomain: "reg-medis.firebaseapp.com",
-  projectId: "reg-medis",
-  storageBucket: "reg-medis.firebasestorage.app",
-  messagingSenderId: "544188622798",
-  appId: "1:544188622798:web:8cc3e8f579af47c1f6ad9f",
-  measurementId: "G-F2V21RE7XR"
-};
+        const firebaseConfig = {
+            apiKey: "AIzaSyAbchKwknPm3jMkDt7aP_mJXM0PV68uLVU",
+            authDomain: "reg-medis.firebaseapp.com",
+            projectId: "reg-medis",
+            storageBucket: "reg-medis.firebasestorage.app",
+            messagingSenderId: "544188622798",
+            appId: "1:544188622798:web:8cc3e8f579af47c1f6ad9f",
+            measurementId: "G-F2V21RE7XR"
+        };
 
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.firestore();
@@ -96,7 +93,7 @@
 
             useEffect(() => {
                 if (!isUnlocked) return;
-                auth.signInAnonymously().catch(e => console.log("Offline Mode"));
+                auth.signInAnonymously().catch(e => console.log("Connected"));
                 
                 const unsubscribe = db.collection('patients')
                     .orderBy('tanggal', 'desc')
@@ -187,8 +184,7 @@
 
             const downloadTemplate = () => {
                 const headers = ["Tanggal", "Jam", "Nama Pasien", "Nama KK", "Tgl Lahir", "JK", "Status", "NIK", "No BPJS", "No HP", "Alamat", "Pekerjaan", "Keluhan", "Diagnosa", "ICD-10", "Tindakan", "Terapi", "Petugas"];
-                const data = [["2024-01-01", "08:00", "CONTOH NAMA", "NAMA KK", "1990-01-01", "L", "Umum", "1234567890123456", "", "0812...", "Alamat", "IRT", "Keluhan...", "Diagnosa...", "A00", "", "", "Admin"]];
-                const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+                const ws = XLSX.utils.aoa_to_sheet([headers]);
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "Template");
                 XLSX.writeFile(wb, "Template_Reg_Medis.xlsx");
@@ -215,11 +211,19 @@
                                 namaKK: (row['Nama KK'] || "").toString().toUpperCase(),
                                 tglLahir: tglLahir,
                                 umur: calculateAgeDetail(tglLahir),
+                                jenisKelamin: row['JK'] || 'L',
                                 status: row['Status'] || 'Umum',
                                 nik: (row['NIK'] || "").toString(),
-                                icd10: (row['ICD-10'] || "").toString().toUpperCase(),
-                                diagnosis: row['Diagnosa'] || '',
+                                noBpjs: (row['No BPJS'] || "").toString(),
+                                noHp: (row['No HP'] || "").toString(),
+                                alamat: row['Alamat'] || '',
+                                pekerjaan: row['Pekerjaan'] || 'Lainnya',
                                 anamnesa: row['Keluhan'] || '',
+                                diagnosis: row['Diagnosa'] || '',
+                                icd10: (row['ICD-10'] || "").toString().toUpperCase(),
+                                tindakan: row['Tindakan'] || '',
+                                terapi: row['Terapi'] || '',
+                                petugas: row['Petugas'] || 'Import',
                                 createdAt: new Date().toISOString()
                             });
                             count++;
@@ -264,7 +268,7 @@
                             </div>
                         )}
 
-                        {/* TAB DASHBOARD */}
+                        {/* DASHBOARD */}
                         {activeTab === 'dashboard' && (
                             <div className="space-y-4 animate-in">
                                 <div className="bg-white p-5 rounded-[2.5rem] border shadow-sm space-y-4">
@@ -313,7 +317,7 @@
                             </div>
                         )}
 
-                        {/* TAB REGISTER / INPUT */}
+                        {/* INPUT FORM - ALL FIELDS DISPLAYED */}
                         {activeTab === 'register' && (
                             <div className="bg-white rounded-[2.5rem] shadow-sm border p-6 animate-in">
                                 <h2 className="text-lg font-black mb-6 border-b pb-4 flex items-center gap-2 uppercase">
@@ -321,46 +325,71 @@
                                 </h2>
                                 <form onSubmit={handleSave} className="space-y-4">
                                     <div className="grid grid-cols-2 gap-3">
-                                        <input type="date" required className="p-4 bg-slate-50 border-0 rounded-2xl text-sm font-bold" value={formData.tanggal} onChange={e => setFormData({...formData, tanggal: e.target.value})} />
-                                        <input type="time" required className="p-4 bg-slate-50 border-0 rounded-2xl text-sm font-bold" value={formData.jam} onChange={e => setFormData({...formData, jam: e.target.value})} />
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] font-bold text-slate-400 ml-2">TANGGAL</label>
+                                            <input type="date" required className="w-full p-4 bg-slate-50 border-0 rounded-2xl text-sm font-bold" value={formData.tanggal} onChange={e => setFormData({...formData, tanggal: e.target.value})} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] font-bold text-slate-400 ml-2">JAM</label>
+                                            <input type="time" required className="w-full p-4 bg-slate-50 border-0 rounded-2xl text-sm font-bold" value={formData.jam} onChange={e => setFormData({...formData, jam: e.target.value})} />
+                                        </div>
                                     </div>
-                                    <input type="text" required placeholder="NAMA PASIEN (KAPITAL)" className="w-full p-4 bg-slate-50 border-0 rounded-2xl font-bold uppercase text-sm" value={formData.namaPasien} onChange={e => setFormData({...formData, namaPasien: e.target.value.toUpperCase()})} />
+                                    
+                                    <input type="text" required placeholder="NAMA LENGKAP PASIEN (KAPITAL)" className="w-full p-4 bg-slate-50 border-0 rounded-2xl font-bold uppercase text-sm" value={formData.namaPasien} onChange={e => setFormData({...formData, namaPasien: e.target.value.toUpperCase()})} />
+                                    <input type="text" required placeholder="NAMA KEPALA KELUARGA (KK)" className="w-full p-4 bg-slate-50 border-0 rounded-2xl font-bold uppercase text-sm" value={formData.namaKK} onChange={e => setFormData({...formData, namaKK: e.target.value.toUpperCase()})} />
+
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="space-y-1">
                                             <label className="text-[9px] font-bold text-slate-400 ml-2">TGL LAHIR</label>
                                             <input type="date" required className="w-full p-4 bg-slate-50 border-0 rounded-2xl text-sm font-bold" value={formData.tglLahir} onChange={e => { const d = e.target.value; setFormData({...formData, tglLahir: d, umur: calculateAgeDetail(d)}); }} />
                                         </div>
                                         <div className="space-y-1">
-                                            <label className="text-[9px] font-bold text-slate-400 ml-2">UMUR</label>
+                                            <label className="text-[9px] font-bold text-slate-400 ml-2">UMUR (OTOMATIS)</label>
                                             <input type="text" readOnly className="w-full p-4 bg-blue-50 border-0 rounded-2xl font-black text-blue-700 text-center text-sm" value={formData.umur || '-'} />
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <select className="p-4 bg-slate-50 border-0 rounded-2xl text-sm font-bold" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
+
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <select className="p-4 bg-slate-50 border-0 rounded-2xl text-[10px] font-bold" value={formData.jenisKelamin} onChange={e => setFormData({...formData, jenisKelamin: e.target.value})}>
+                                            <option value="L">LAKI-LAKI</option>
+                                            <option value="P">PEREMPUAN</option>
+                                        </select>
+                                        <select className="p-4 bg-slate-50 border-0 rounded-2xl text-[10px] font-bold" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
                                             <option value="Umum">UMUM</option>
                                             <option value="BPJS">BPJS</option>
+                                            <option value="Lainnya">LAINNYA</option>
                                         </select>
-                                        <select className="p-4 bg-slate-50 border-0 rounded-2xl text-sm font-bold" value={formData.pekerjaan} onChange={e => setFormData({...formData, pekerjaan: e.target.value})}>
+                                        <select className="p-4 bg-slate-50 border-0 rounded-2xl text-[10px] font-bold" value={formData.pekerjaan} onChange={e => setFormData({...formData, pekerjaan: e.target.value})}>
                                             {PEKERJAAN_OPTIONS.map(opt => <option key={opt} value={opt}>{opt.toUpperCase()}</option>)}
                                         </select>
                                     </div>
-                                    <input type="number" placeholder="NIK (16 DIGIT)" className={`w-full p-4 border-0 rounded-2xl text-sm ${formData.nik && formData.nik.length !== 16 ? 'bg-red-50 text-red-600' : 'bg-slate-50 font-bold'}`} value={formData.nik} onChange={e => setFormData({...formData, nik: e.target.value})} />
-                                    
-                                    <div className="bg-slate-50 p-6 rounded-[2.5rem] space-y-4 border-2 border-slate-100">
+
+                                    <div className="space-y-3">
+                                        <input type="number" placeholder="NIK (16 DIGIT)" className={`w-full p-4 border-0 rounded-2xl text-sm ${formData.nik && formData.nik.length !== 16 ? 'bg-red-50 text-red-600' : 'bg-slate-50 font-bold'}`} value={formData.nik} onChange={e => setFormData({...formData, nik: e.target.value})} />
+                                        <input type="number" placeholder="NO. KARTU BPJS" className="w-full p-4 bg-slate-50 border-0 rounded-2xl text-sm font-bold" value={formData.noBpjs} onChange={e => setFormData({...formData, noBpjs: e.target.value})} />
+                                        <input type="number" placeholder="NO. HP" className="w-full p-4 bg-slate-50 border-0 rounded-2xl text-sm font-bold" value={formData.noHp} onChange={e => setFormData({...formData, noHp: e.target.value})} />
+                                    </div>
+
+                                    <textarea placeholder="ALAMAT LENGKAP" className="w-full p-4 bg-slate-50 border-0 rounded-2xl text-sm font-bold min-h-[60px]" value={formData.alamat} onChange={e => setFormData({...formData, alamat: e.target.value})} />
+
+                                    <div className="bg-blue-50 p-6 rounded-[2.5rem] space-y-4 border-2 border-blue-100">
                                         <textarea placeholder="KELUHAN / ANAMNESA" className="w-full p-4 bg-white border-0 rounded-2xl text-sm italic min-h-[100px]" value={formData.anamnesa} onChange={e => setFormData({...formData, anamnesa: e.target.value})} />
                                         <div className="grid grid-cols-2 gap-3">
                                             <input type="text" placeholder="DIAGNOSA" className="p-4 bg-white border-0 rounded-2xl text-sm font-bold" value={formData.diagnosis} onChange={e => setFormData({...formData, diagnosis: e.target.value})} />
                                             <input type="text" placeholder="KODE ICD-10" className="p-4 bg-white border-0 rounded-2xl text-sm font-black text-blue-600" value={formData.icd10} onChange={e => setFormData({...formData, icd10: e.target.value.toUpperCase()})} />
                                         </div>
+                                        <textarea placeholder="TINDAKAN" className="w-full p-4 bg-white border-0 rounded-2xl text-sm" value={formData.tindakan} onChange={e => setFormData({...formData, tindakan: e.target.value})} />
+                                        <textarea placeholder="TERAPI / OBAT" className="w-full p-4 bg-white border-0 rounded-2xl text-sm font-bold" value={formData.terapi} onChange={e => setFormData({...formData, terapi: e.target.value})} />
+                                        <input type="text" placeholder="NAMA PETUGAS" className="w-full p-4 bg-white border-0 rounded-2xl text-sm font-bold" value={formData.petugas} onChange={e => setFormData({...formData, petugas: e.target.value})} />
                                     </div>
                                     <button type="submit" disabled={loading} className="w-full py-5 bg-blue-600 text-white font-black rounded-3xl shadow-xl uppercase tracking-widest">
-                                        {loading ? 'MEMPROSES...' : 'SIMPAN REGISTER'}
+                                        {loading ? 'MEMPROSES...' : 'SIMPAN KE CLOUD'}
                                     </button>
                                 </form>
                             </div>
                         )}
 
-                        {/* TAB HISTORY / TABEL */}
+                        {/* REGISTER LIST */}
                         {activeTab === 'history' && (
                             <div className="space-y-4 animate-in">
                                 <div className="bg-white p-4 rounded-[2rem] border shadow-sm flex gap-2">
@@ -395,10 +424,10 @@
                         )}
                     </main>
 
-                    {/* MODAL DETAIL */}
+                    {/* DETAIL MODAL */}
                     {selectedPatient && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                            <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setSelectedPatient(null)} />
+                            <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-md" onClick={() => setSelectedPatient(null)} />
                             <div className="bg-white w-full max-w-sm rounded-[3.5rem] shadow-2xl relative overflow-hidden animate-in">
                                 <div className="p-8 space-y-6 max-h-[80vh] overflow-y-auto">
                                     <div className="flex justify-between items-start">
@@ -416,7 +445,7 @@
                                         <p className="text-[9px] font-black text-orange-600 uppercase mb-1">Keluhan:</p>
                                         <p className="text-sm italic text-slate-700 leading-relaxed">"{selectedPatient.anamnesa || '-'}"</p>
                                     </div>
-                                    <div className="flex gap-2 pt-4">
+                                    <div className="grid grid-cols-2 gap-2 pt-4">
                                         <button onClick={() => setShowDeleteConfirm(true)} className="flex-1 py-4 bg-red-50 text-red-600 rounded-2xl font-black text-xs uppercase">Hapus</button>
                                         <button onClick={() => { setActiveTab('register'); setFormData(selectedPatient); setSelectedPatient(null); }} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase shadow-lg">Edit</button>
                                     </div>
@@ -425,13 +454,13 @@
                         </div>
                     )}
 
-                    {/* MODAL DELETE */}
+                    {/* DELETE MODAL */}
                     {showDeleteConfirm && (
                         <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-red-900/60 backdrop-blur-md">
                             <div className="bg-white w-full max-w-xs rounded-[3rem] p-10 text-center shadow-2xl animate-in">
                                 <Icon name="alert-triangle" size={60} className="text-red-600 mx-auto mb-4" />
                                 <h3 className="text-xl font-black mb-2 uppercase">Hapus Data?</h3>
-                                <p className="text-[10px] text-slate-500 mb-8 font-bold uppercase tracking-widest leading-relaxed">Data ini akan terhapus selamanya dari cloud database.</p>
+                                <p className="text-[10px] text-slate-500 mb-8 font-bold uppercase tracking-widest leading-relaxed">Data akan terhapus selamanya.</p>
                                 <button onClick={confirmDelete} className="w-full py-4 bg-red-600 text-white font-black rounded-2xl text-xs uppercase mb-2 shadow-lg">YA, HAPUS</button>
                                 <button onClick={() => setShowDeleteConfirm(false)} className="w-full py-2 text-slate-400 font-bold text-xs uppercase">BATAL</button>
                             </div>
@@ -459,16 +488,14 @@
                         </div>
                         <div className="grid grid-cols-2 gap-8 mb-10">
                             <div className="border p-4 rounded-xl">
-                                <h3 className="font-bold border-b mb-2 uppercase">Statistik Kunjungan</h3>
+                                <h3 className="font-bold border-b mb-2 uppercase text-center">Statistik</h3>
                                 <p>Total Pasien: {dashboardData.total}</p>
                                 <p>Umum: {dashboardData.statusCounts['Umum'] || 0}</p>
                                 <p>BPJS: {dashboardData.statusCounts['BPJS'] || 0}</p>
                             </div>
-                            <div className="border p-4 rounded-xl">
-                                <h3 className="font-bold border-b mb-2 uppercase">Top 10 Diagnosa (ICD-10)</h3>
-                                {dashboardData.topIcd.map(([code, count]) => (
-                                    <p key={code}>{code}: {count} Kasus</p>
-                                ))}
+                            <div className="border p-4 rounded-xl text-sm">
+                                <h3 className="font-bold border-b mb-2 uppercase text-center">ICD-10</h3>
+                                {dashboardData.topIcd.map(([code, count]) => <p key={code}>{code}: {count} Kasus</p>)}
                             </div>
                         </div>
                         <div className="mt-20 flex justify-end">
